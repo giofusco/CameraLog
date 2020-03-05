@@ -10,19 +10,29 @@ import UIKit
 import SpriteKit
 import ARKit
 
-class ViewController: UIViewController, ARSKViewDelegate {
+class ViewController: UIViewController, ARSessionDelegate {
     
-    @IBOutlet var sceneView: ARSKView!
+    @IBOutlet weak var sceneView: ARSKView!
+    var logger : Logger = Logger()
+    var sessionID : String = ""
+    var frameRate : Int = 10
+    var rec : Bool = false
+    var frameCnt : UInt64 = 0
+    var lastProcessedFrameTime: TimeInterval = TimeInterval()
+
+    @IBOutlet weak var recButton: UIButton!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         // Set the view's delegate
-        sceneView.delegate = self
+        sceneView.session.delegate = self
         
         // Show statistics such as fps and node count
         sceneView.showsFPS = true
         sceneView.showsNodeCount = true
+        
+        logger.startSession(sessionID : sessionID)
         
         // Load the SKScene from 'Scene.sks'
         if let scene = SKScene(fileNamed: "Scene") {
@@ -49,12 +59,27 @@ class ViewController: UIViewController, ARSKViewDelegate {
     
     // MARK: - ARSKViewDelegate
     
-    func view(_ view: ARSKView, nodeFor anchor: ARAnchor) -> SKNode? {
-        // Create and configure a node for the anchor added to the view's session.
-        let labelNode = SKLabelNode(text: "👾")
-        labelNode.horizontalAlignmentMode = .center
-        labelNode.verticalAlignmentMode = .center
-        return labelNode;
+    @IBAction func recPressed(_ sender: Any) {
+        rec = !rec
+        if rec{
+            recButton.backgroundColor = .green
+            recButton.setTitle("Pause", for: .normal)
+        }
+        else{
+            recButton.backgroundColor = .red
+            recButton.setTitle("REC", for: .normal)
+        }
+    }
+    
+    func session(_ session: ARSession, didUpdate frame: ARFrame){
+        print(frame.timestamp-lastProcessedFrameTime)
+        print(1000.0/Double(frameRate))
+        if rec && (frame.timestamp-lastProcessedFrameTime) >= (1/Double(frameRate)){
+//            logger.saveImage(imageToSave: frame.capturedImage, counter: frameCnt)
+            frameCnt += 1
+            logger.logData(currentARFrame: frame, cnt: frameCnt )
+            lastProcessedFrameTime = frame.timestamp
+        }
     }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
